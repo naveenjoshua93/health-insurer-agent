@@ -30,7 +30,11 @@ SYSTEM_PROMPT = (
     "advice, legal threats, fraud allegations, IRDAI or ombudsman complaints); or gives identity details "
     "(claim ID or policy number) that don't seem to resolve to anything. If the caller is asking about a "
     "claim denial or being paid less than they claimed, call get_denial_reason first so the specific reason "
-    "can be explained before any escalation."
+    "can be explained before any escalation. If the caller wants to upload, submit, or send documents, or "
+    "asks for an upload link or URL, call send_document_upload_link with their claim ID - the system sends "
+    "the link automatically as a message the caller can open. Never describe a website, app, login steps, or "
+    "any manual upload process yourself; that is not how this system works. If you don't yet know their claim "
+    "ID, ask for it first with a normal clarifying question instead of calling this tool."
 )
 
 TOOLS = [
@@ -102,6 +106,18 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "send_document_upload_link",
+            "description": "Send the caller a link/message to upload missing documents for a reimbursement claim.",
+            "parameters": {
+                "type": "object",
+                "properties": {"claim_id": {"type": "string"}},
+                "required": ["claim_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "create_grievance_case",
             "description": "Create a grievance case and escalate the session to a human agent.",
             "parameters": {
@@ -143,6 +159,8 @@ def _execute_tool(name, args, session):
     if name == "get_denial_reason":
         return knowledge.get_denial_reason(args.get("claim_id"))
     if name == "check_document_completeness":
+        return knowledge.check_document_completeness(args.get("claim_id"))
+    if name == "send_document_upload_link":
         return knowledge.check_document_completeness(args.get("claim_id"))
     if name == "create_grievance_case":
         return _make_grievance(session, args.get("reason"))
@@ -200,6 +218,13 @@ def _english_text_for_tool_result(name, result):
 
     if name == "check_document_completeness":
         return f"For claim {result['claim_id']}: {completeness_text(result)}" if result.get("found") else None
+
+    if name == "send_document_upload_link":
+        if not result.get("found"):
+            return None
+        if not result.get("missing"):
+            return f"Claim {result['claim_id']} already has all its required documents - there's nothing left to upload."
+        return f"I've sent you a message below with a secure link to upload the missing documents for claim {result['claim_id']}."
 
     if name == "create_grievance_case":
         return "I've logged this and I'm connecting you to a human agent who will follow up with you."
@@ -278,6 +303,8 @@ def run_turn(session, transcript, response_language):
                 _make_grievance(session, intent="denial_explanation")
                 reply_en += ESCALATION_NOTICE
                 action = "ESCALATE"
+            elif tool_name == "send_document_upload_link" and result.get("missing"):
+                action = "REQUEST_DOCUMENT"
 
         messages.append({"role": "assistant", "tool_calls": message["tool_calls"]})
         messages.append({"role": "tool", "tool_call_id": tool_call["id"], "content": json.dumps(result, default=str)})
