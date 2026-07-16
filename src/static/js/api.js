@@ -1,23 +1,44 @@
+class ApiError extends Error {
+  constructor(status, detail) {
+    super(detail || `request failed: ${status}`);
+    this.status = status;
+    this.isSessionMissing = status === 404 || status === 410;
+  }
+}
+
+async function parseOrThrow(res) {
+  if (!res.ok) {
+    let detail = null;
+    try {
+      detail = (await res.json()).detail;
+    } catch (err) {
+      // response wasn't JSON - fall back to status-only error
+    }
+    throw new ApiError(res.status, detail);
+  }
+  return res.json();
+}
+
 const Api = {
   async createSession() {
     const res = await fetch("/session", { method: "POST" });
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async getSessionStatus(sessionId) {
     const res = await fetch(`/session/${sessionId}`);
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async getIntro(sessionId) {
     const res = await fetch(`/session/${sessionId}/intro`, { method: "POST" });
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async setLanguageOverride(sessionId, languageCode) {
     const body = new URLSearchParams({ language_code: languageCode });
     const res = await fetch(`/session/${sessionId}/language`, { method: "POST", body });
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async sendTurn(sessionId, audioBlob) {
@@ -25,8 +46,7 @@ const Api = {
     form.append("session_id", sessionId);
     form.append("audio", audioBlob, "turn.webm");
     const res = await fetch("/turn", { method: "POST", body: form });
-    if (!res.ok) throw new Error(`turn failed: ${res.status}`);
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async uploadDocument(sessionId, file) {
@@ -34,29 +54,28 @@ const Api = {
     form.append("session_id", sessionId);
     form.append("file", file);
     const res = await fetch("/document", { method: "POST", body: form });
-    if (!res.ok) throw new Error(`document upload failed: ${res.status}`);
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async submitFeedback(sessionId, thumbsUp) {
     const body = new URLSearchParams({ thumbs_up: thumbsUp ? "true" : "false" });
     const res = await fetch(`/session/${sessionId}/feedback`, { method: "POST", body });
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async getAudit(sessionId) {
     const res = await fetch(`/audit/${sessionId}`);
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async listSessions() {
     const res = await fetch("/sessions");
-    return res.json();
+    return parseOrThrow(res);
   },
 
   async getMetrics() {
     const res = await fetch("/metrics");
-    return res.json();
+    return parseOrThrow(res);
   },
 };
 

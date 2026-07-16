@@ -158,6 +158,13 @@
     smsLink.href = `/static/upload.html?session_id=${sessionId}`;
   }
 
+  async function recoverFromMissingSession() {
+    setState("wait", "Starting a fresh session…");
+    setMicInert("This link had expired — starting a new call.");
+    const s = await Api.createSession();
+    window.location.href = `/static/call.html?session_id=${s.session_id}`;
+  }
+
   async function startCall() {
     gateCard.classList.add("hidden");
     transcriptCard.classList.remove("hidden");
@@ -166,7 +173,18 @@
     setState("wait", "The assistant is introducing itself…");
     setMicInert("Please wait — introduction in progress.");
 
-    const intro = await Api.getIntro(sessionId);
+    let intro;
+    try {
+      intro = await Api.getIntro(sessionId);
+    } catch (err) {
+      if (err.isSessionMissing) {
+        await recoverFromMissingSession();
+      } else {
+        setState("wait", "Something went wrong");
+        setMicInert("Please reload the page to try again.");
+      }
+      return;
+    }
     addBubble("assistant", intro.assistant_text);
     await playAudioBase64Async(intro.assistant_audio);
     await playBeep();
@@ -232,6 +250,10 @@
       try {
         result = await Api.sendTurn(sessionId, blob);
       } catch (err) {
+        if (err.isSessionMissing) {
+          await recoverFromMissingSession();
+          return;
+        }
         setState("wait", "Something went wrong");
         setMicInert("Please tap the mic to try again.");
         micBtn.classList.remove("inert");
