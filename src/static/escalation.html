@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Connecting you — Sampoorna Health Secure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/design.css">
+<style>
+  .escalation-card { text-align: center; padding: 40px 26px; margin-top: 28px; }
+  .ring {
+    width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 18px;
+    background: var(--gradient-primary); display: flex; align-items: center; justify-content: center;
+    font-size: 26px; color: #fff;
+  }
+  .summary-card { text-align: left; margin-top: 20px; }
+  .summary-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--hairline); font-size: 13.5px; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row .k { color: var(--text-muted); font-weight: 500; }
+  .summary-row .v { color: var(--text-primary); font-weight: 600; text-align: right; max-width: 60%; }
+  .feedback-row { display: flex; gap: 10px; justify-content: center; margin-top: 22px; }
+  .feedback-btn { font-size: 22px; background: #fff; border: 1px solid var(--hairline); border-radius: 100px; padding: 10px 16px; cursor: pointer; }
+  .feedback-btn.chosen { border-color: var(--blue); background: #eef2ff; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="logo-lockup" id="logo"></div>
+
+  <div class="card escalation-card" style="margin-top:28px;">
+    <div class="ring">&#9737;</div>
+    <h2 class="section-title" style="font-size:24px;">Connecting you to an agent</h2>
+    <p class="lead">A member of our team will follow up with you shortly. They already have the details of your case, so you won't need to repeat yourself.</p>
+  </div>
+
+  <div class="card summary-card" id="summaryCard">
+    <div class="eyebrow"><span class="bar"></span><span class="txt">Case summary</span></div>
+    <div id="summaryRows"><p class="caption">Loading case summary…</p></div>
+  </div>
+
+  <div class="card" style="margin-top:14px;text-align:center;">
+    <p class="card-label-text" style="margin-bottom:12px;">Was this call helpful?</p>
+    <div class="feedback-row">
+      <button class="feedback-btn" id="thumbsUp">&#128077;</button>
+      <button class="feedback-btn" id="thumbsDown">&#128078;</button>
+    </div>
+    <p class="caption hidden" id="feedbackThanks" style="margin-top:10px;">Thanks for letting us know.</p>
+  </div>
+
+  <div style="text-align:center;margin-top:20px;">
+    <a href="/static/index.html" class="body-text">Back to home</a>
+  </div>
+</div>
+
+<script src="/static/js/logo.js"></script>
+<script src="/static/js/api.js"></script>
+<script>
+  renderSarvamLogo(document.getElementById("logo"));
+
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+  if (!sessionId) window.location.href = "/static/index.html";
+
+  const summaryRows = document.getElementById("summaryRows");
+
+  async function loadSummary() {
+    try {
+      const status = await Api.getSessionStatus(sessionId);
+      const g = status.last_grievance;
+      if (!g) {
+        summaryRows.innerHTML = `<p class="caption">No case summary recorded yet.</p>`;
+        return;
+      }
+      summaryRows.innerHTML = `
+        <div class="summary-row"><span class="k">Session</span><span class="v">${g.session_id.slice(0, 8)}…</span></div>
+        <div class="summary-row"><span class="k">Reason</span><span class="v">${(g.intent || "—").replace(/_/g, " ")}</span></div>
+        <div class="summary-row"><span class="k">Claim</span><span class="v">${g.claim_context || "Not yet identified"}</span></div>
+        <div class="summary-row"><span class="k">Language</span><span class="v">${languageLabel(g.language)}</span></div>
+        <div class="summary-row"><span class="k">Status</span><span class="v">${(g.status || "").replace(/_/g, " ")}</span></div>
+      `;
+    } catch (err) {
+      summaryRows.innerHTML = `<p class="caption">Couldn't load the case summary.</p>`;
+    }
+  }
+  loadSummary();
+
+  const thumbsUp = document.getElementById("thumbsUp");
+  const thumbsDown = document.getElementById("thumbsDown");
+  const feedbackThanks = document.getElementById("feedbackThanks");
+
+  async function sendFeedback(isUp) {
+    thumbsUp.classList.toggle("chosen", isUp);
+    thumbsDown.classList.toggle("chosen", !isUp);
+    feedbackThanks.classList.remove("hidden");
+    await Api.submitFeedback(sessionId, isUp);
+  }
+  thumbsUp.addEventListener("click", () => sendFeedback(true));
+  thumbsDown.addEventListener("click", () => sendFeedback(false));
+</script>
+</body>
+</html>

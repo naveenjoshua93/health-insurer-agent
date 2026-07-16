@@ -1,0 +1,50 @@
+{
+  "product": "Sampoorna Health Secure",
+  "plan_summary": "A family health insurance plan covering hospitalization, day-care procedures, pre and post hospitalization expenses, and cashless treatment at network hospitals.",
+  "sum_insured": 500000,
+  "co_pay_percent": 0,
+  "policy_period_months": 12,
+  "room_rent_cap": {
+    "type": "per_day",
+    "amount": 5000,
+    "rule": "If actual room rent exceeds the cap, all associated charges (doctor fees, procedure charges, etc.) are deducted proportionately in the same ratio."
+  },
+  "pre_hospitalization_days": 30,
+  "post_hospitalization_days": 60,
+  "day_care_covered": true,
+  "ambulance_cover": { "covered": true, "limit_per_claim": 2000 },
+  "sub_limits": [
+    { "condition": "cataract", "limit": 40000, "note": "Per eye." },
+    { "condition": "knee_replacement", "limit": 150000 },
+    { "condition": "hernia", "limit": 60000 },
+    { "condition": "maternity_normal", "limit": 50000, "note": "After maternity waiting period." },
+    { "condition": "maternity_caesarean", "limit": 75000, "note": "After maternity waiting period." }
+  ],
+  "waiting_periods": [
+    { "category": "initial", "days": 30, "note": "No claims except accidents in the first 30 days." },
+    { "category": "specific_ailments", "examples": ["hernia", "cataract", "joint_replacement", "piles", "kidney_stones"], "months": 24 },
+    { "category": "pre_existing_diseases", "months": 36 },
+    { "category": "maternity", "months": 24 }
+  ],
+  "exclusions": [
+    "cosmetic_or_aesthetic_surgery",
+    "dental_treatment_unless_accidental",
+    "spectacles_contact_lenses_hearing_aids",
+    "self_inflicted_injury",
+    "treatment_outside_india",
+    "experimental_or_unproven_treatment",
+    "non_medical_consumables"
+  ],
+  "non_medical_items": [
+    "gloves", "masks", "administrative_or_registration_charges",
+    "attendant_charges", "food_for_attendant", "toiletries",
+    "documentation_charges", "telephone_charges"
+  ],
+  "network_hospitals_note": "Cashless is available only at network hospitals. Treatment at a non-network hospital must be claimed as reimbursement.",
+  "claim_intimation": {
+    "cashless_planned": "Intimate at least 48-72 hours before planned admission.",
+    "cashless_emergency": "Intimate within 24 hours of emergency admission.",
+    "reimbursement": "Submit documents within 15 days of discharge."
+  },
+  "renewal_note": "Lifelong renewability. A no-claim bonus increases sum insured for every claim-free year, up to a cap."
+}

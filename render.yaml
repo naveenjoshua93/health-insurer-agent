@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: sarvam-claims-poc
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.9
+# Note: on the free plan, /sessions is on ephemeral disk - session and audit data resets
+# on every deploy or restart. That's fine for a live demo done in one sitting. If you need
+# sessions to survive restarts, upgrade the service to a paid plan and add a persistent disk:
+#
+#     disk:
+#       name: sessions-data
+#       mountPath: /opt/render/project/src/sessions
+#       sizeGB: 1

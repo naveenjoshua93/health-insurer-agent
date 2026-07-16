@@ -1,0 +1,34 @@
+{
+  "templates": {
+    "ROOM_RENT_CAP": {
+      "reason": "Your policy has a room rent limit of Rs 5,000 per day. The room chosen cost more than this limit. As per policy terms, when room rent exceeds the cap, the associated hospital charges are reduced in the same proportion. This is why the approved amount is lower than the amount you claimed.",
+      "next_step": "This deduction is as per your policy's room rent condition. I can connect you to an agent to walk through the exact calculation.",
+      "context_instruction": "No additional lookup needed. The room_rent_cap amount (Rs 5,000/day) is already stated in this template; do not re-derive it."
+    },
+    "WAITING_PERIOD": {
+      "reason": "This treatment is for a condition that has a waiting period under your policy. The date of your claim falls within that waiting period, so the claim could not be approved at this time.",
+      "next_step": "Once the waiting period is complete, future claims for this condition can be considered. I can connect you to an agent for the exact completion date.",
+      "context_instruction": "If the claim's treatment_type matches an entry in policy_kb.json waiting_periods.specific_ailments, name the treatment and the applicable months (e.g., 'hernia has a 24-month waiting period'). If treatment_type is null or unmatched, do not guess the treatment or duration; keep the explanation generic and offer agent handoff for specifics."
+    },
+    "SUBLIMIT_EXCEEDED": {
+      "reason": "Your policy has a specific monetary limit for this particular treatment. The amount claimed is higher than that limit, so only the limit amount could be approved.",
+      "next_step": "This is as per your policy's sub-limit for this treatment. I can connect you to an agent to confirm the specific limit that applies.",
+      "context_instruction": "If the claim's treatment_type matches an entry in policy_kb.json sub_limits, name the treatment and its exact limit (e.g., 'the cataract limit is Rs 40,000 per eye'). If treatment_type is null or unmatched, do not guess the treatment or figure; keep the explanation generic and offer agent handoff for the specific limit."
+    },
+    "NON_MEDICAL_EXPENSE": {
+      "reason": "A large part of this bill is made up of non-medical items - such as gloves, attendant charges, administrative fees, or consumables - which are not covered under the policy. After removing these, the covered amount was too low to approve, or these items were deducted.",
+      "next_step": "Only the non-medical items were affected. I can connect you to an agent for an itemised breakup of what was and wasn't covered.",
+      "context_instruction": "You may reference policy_kb.json non_medical_items as examples of what typically falls in this category, but do not claim to know the exact items on this specific bill unless they are provided in claim context."
+    },
+    "EXCLUSION": {
+      "reason": "This treatment is listed as an exclusion under your policy, which means it is not covered at all. Because of this, the claim could not be approved.",
+      "next_step": "Exclusions are listed in your policy document. I can connect you to an agent to discuss your specific situation.",
+      "context_instruction": "If the claim's treatment_type matches an entry in policy_kb.json exclusions, name the specific exclusion (e.g., 'cosmetic or aesthetic surgery is excluded'). If treatment_type is null or unmatched, do not guess which exclusion applies; keep the explanation generic and offer agent handoff."
+    },
+    "DOCUMENT_INSUFFICIENT": {
+      "reason": "The documents submitted were not enough to process the claim - a key document was missing, incomplete, or unclear.",
+      "next_step": "Once the required document is submitted clearly, the claim can be reviewed again. I can tell you exactly which document is needed.",
+      "context_instruction": "If the claim's pending_documents[] is populated, name the specific missing document(s) using the label from document_checklist.json. If pending_documents[] is empty, do not guess which document is missing; keep the explanation generic and offer agent handoff."
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "claims": [
+    {
+      "claim_id": "CL-1001",
+      "policy_no": "SMP-HL-500123",
+      "claimant_name": "Ramesh Nair",
+      "hospital": "Aster MIMS, Kozhikode",
+      "claim_type": "cashless",
+      "treatment_type": null,
+      "status": "pending",
+      "amount_claimed": 145000,
+      "amount_approved": null,
+      "pending_documents": [],
+      "denial_reason_code": null,
+      "notes": "Pre-authorization request submitted, awaiting insurer approval."
+    },
+    {
+      "claim_id": "CL-1002",
+      "policy_no": "SMP-HL-500124",
+      "claimant_name": "Sunita Sharma",
+      "hospital": "Fortis, Bengaluru",
+      "claim_type": "cashless",
+      "treatment_type": null,
+      "status": "approved",
+      "amount_claimed": 90000,
+      "amount_approved": 90000,
+      "pending_documents": [],
+      "denial_reason_code": null,
+      "notes": "Cashless pre-auth approved for full amount."
+    },
+    {
+      "claim_id": "CL-1003",
+      "policy_no": "SMP-HL-500125",
+      "claimant_name": "Anil Kumar",
+      "hospital": "PRS Hospital, Thiruvananthapuram",
+      "claim_type": "reimbursement",
+      "treatment_type": null,
+      "status": "queried",
+      "amount_claimed": 62000,
+      "amount_approved": null,
+      "pending_documents": ["discharge_summary", "pan_card"],
+      "denial_reason_code": null,
+      "notes": "Reimbursement filed; bill and prescription received; discharge summary and PAN pending."
+    },
+    {
+      "claim_id": "CL-1004",
+      "policy_no": "SMP-HL-500126",
+      "claimant_name": "Priya Menon",
+      "hospital": "KIMS, Thiruvananthapuram",
+      "claim_type": "reimbursement",
+      "treatment_type": null,
+      "status": "partially_paid",
+      "amount_claimed": 120000,
+      "amount_approved": 75000,
+      "pending_documents": [],
+      "denial_reason_code": "ROOM_RENT_CAP",
+      "notes": "Room rent exceeded policy cap; proportionate deduction applied."
+    },
+    {
+      "claim_id": "CL-1005",
+      "policy_no": "SMP-HL-500127",
+      "claimant_name": "Mohammed Rafi",
+      "hospital": "Baby Memorial, Kozhikode",
+      "claim_type": "reimbursement",
+      "treatment_type": "hernia",
+      "status": "rejected",
+      "amount_claimed": 48000,
+      "amount_approved": 0,
+      "pending_documents": [],
+      "denial_reason_code": "WAITING_PERIOD",
+      "notes": "Claim for a condition within its waiting period; rejected."
+    },
+    {
+      "claim_id": "CL-1006",
+      "policy_no": "SMP-HL-500128",
+      "claimant_name": "Lakshmi Iyer",
+      "hospital": "Amrita, Kochi",
+      "claim_type": "reimbursement",
+      "treatment_type": null,
+      "status": "rejected",
+      "amount_claimed": 30000,
+      "amount_approved": 0,
+      "pending_documents": [],
+      "denial_reason_code": "NON_MEDICAL_EXPENSE",
+      "notes": "Claim consisted largely of non-medical consumable items; rejected."
+    }
+  ]
+}

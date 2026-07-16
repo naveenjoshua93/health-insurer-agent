@@ -1,0 +1,18 @@
+{
+  "reimbursement": [
+    { "id": "claim_form", "label": "duly filled and signed claim form" },
+    { "id": "hospital_final_bill", "label": "hospital final bill with itemised breakup" },
+    { "id": "payment_receipts", "label": "payment receipts from the hospital" },
+    { "id": "discharge_summary", "label": "discharge summary from the hospital" },
+    { "id": "diagnostic_reports", "label": "diagnostic and investigation reports" },
+    { "id": "pharmacy_bills", "label": "pharmacy bills" },
+    { "id": "prescriptions", "label": "doctor's prescriptions" },
+    { "id": "pan_card", "label": "PAN card for the payout" },
+    { "id": "bank_neft_details", "label": "cancelled cheque or bank details for NEFT transfer" }
+  ],
+  "cashless": [
+    { "id": "pre_authorization_form", "label": "pre-authorization form (filled by the hospital)" },
+    { "id": "id_proof", "label": "photo ID proof of the patient" },
+    { "id": "policy_details", "label": "policy number or health card" }
+  ]
+}

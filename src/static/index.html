@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sampoorna Health Secure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/design.css">
+<style>
+  .home { display: flex; flex-direction: column; min-height: 100vh; }
+  .home-top { padding-top: 8px; }
+  .home-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+  .greeting-card { text-align: center; padding: 40px 28px; }
+  .greeting-card .hero { margin-bottom: 10px; }
+  .cta-row { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 28px; }
+  .quick-row { display: flex; gap: 10px; margin-top: 22px; }
+  .quick-card { flex: 1; text-align: center; }
+  .quick-card .num { font-size: 22px; }
+  .footer-note { text-align: center; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="page home">
+  <div class="home-top">
+    <div class="logo-lockup" id="logo"></div>
+  </div>
+
+  <div class="home-mid">
+    <div class="eyebrow" style="justify-content:center;">
+      <span class="bar"></span><span class="txt">Sampoorna Health Secure</span>
+    </div>
+
+    <div class="card greeting-card">
+      <div class="tick"></div>
+      <h1 class="hero">Hi, how can<br/>we help today?</h1>
+      <p class="lead">Speak in your own language — Hindi, Malayalam, or any Indian language.
+        We'll understand and reply the same way.</p>
+
+      <div class="cta-row">
+        <button class="btn-primary" id="callBtn" style="width:100%;max-width:280px;">
+          <span>&#128222;</span> Call for help
+        </button>
+        <button class="btn-secondary" id="chatBtn" style="width:100%;max-width:280px;">Chat instead</button>
+      </div>
+    </div>
+
+    <div class="quick-row">
+      <div class="card quick-card">
+        <div class="num">3</div>
+        <div class="label">Things we help with</div>
+      </div>
+      <div class="card quick-card">
+        <div class="num">24×7</div>
+        <div class="label">Always available</div>
+      </div>
+      <div class="card quick-card">
+        <div class="num">10+</div>
+        <div class="label">Languages understood</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <span class="caption">Sampoorna Health Insurance · This assistant explains and guides — a human always reviews decisions.</span>
+    <br/><a class="caption" href="/static/audit.html">View audit &amp; metrics</a>
+  </div>
+</div>
+
+<script src="/static/js/logo.js"></script>
+<script src="/static/js/api.js"></script>
+<script>
+  renderSarvamLogo(document.getElementById("logo"));
+
+  async function startCall() {
+    const { session_id } = await Api.createSession();
+    window.location.href = `/static/call.html?session_id=${session_id}`;
+  }
+
+  document.getElementById("callBtn").addEventListener("click", startCall);
+  document.getElementById("chatBtn").addEventListener("click", startCall);
+</script>
+</body>
+</html>

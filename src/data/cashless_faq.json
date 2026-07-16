@@ -1,0 +1,19 @@
+{
+  "faqs": [
+    { "q": "how does cashless work", "a": "In cashless, the insurer settles the hospital bill directly with a network hospital, so you don't pay upfront (except for items not covered by the policy). You must be admitted to a network hospital and have pre-authorization approved." },
+    { "q": "how to find a network hospital", "a": "Network hospitals are listed in the Sampoorna app under 'Find a Hospital'. Cashless works only at these hospitals; at other hospitals you pay and claim reimbursement later." },
+    { "q": "what is pre-authorization", "a": "Pre-authorization is the hospital sending your diagnosis, treatment plan, and cost estimate to the insurer for approval before treatment begins. It is required for cashless." },
+    { "q": "what does pre-authorization need", "a": "The hospital submits your policy number, the doctor's treatment plan, the diagnosis, and an estimated cost. The hospital insurance desk usually handles most of this for you." },
+    { "q": "how long does pre-authorization take", "a": "For planned admissions, approval is usually given within a few hours of the hospital submitting the request. For emergencies it can be faster." },
+    { "q": "what if pre-authorization is denied", "a": "If cashless pre-auth is denied, you can still pay the hospital and file for reimbursement later with the required documents. A pre-auth denial is not the same as a claim denial." },
+    { "q": "planned vs emergency admission", "a": "For planned admission, request pre-authorization 48-72 hours before. For emergency admission, the hospital can request pre-authorization within 24 hours of admission." },
+    { "q": "check my cashless status", "a": "I can check the status of your cashless pre-authorization if you give me your policy number." },
+    { "q": "can I use cashless at any hospital", "a": "No. Cashless is only available at network hospitals. For non-network hospitals you must pay yourself and then claim reimbursement." },
+    { "q": "do I pay anything in cashless", "a": "You may still have to pay for items the policy doesn't cover - such as non-medical consumables, or any amount above a sub-limit or room rent cap." },
+    { "q": "what is a co-pay", "a": "A co-pay is a share of the bill you pay yourself. This plan has no co-pay, so the insurer covers the eligible amount fully, subject to limits." },
+    { "q": "how do I start cashless", "a": "Go to a network hospital, show your health card or policy details at the insurance desk, and ask them to raise a pre-authorization request. I can guide you through it." },
+    { "q": "what if my treatment cost is more than approved", "a": "If the final bill is higher than the approved estimate, the hospital sends an enhancement request to the insurer during your stay for the extra amount." },
+    { "q": "is ambulance covered", "a": "Yes, ambulance charges are covered up to Rs 2,000 per claim under this plan." },
+    { "q": "is day care covered", "a": "Yes, day-care procedures that don't need 24-hour hospitalization are covered under this plan." }
+  ]
+}

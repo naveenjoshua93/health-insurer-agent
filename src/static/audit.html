@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Audit &amp; metrics — Sampoorna Health Secure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/design.css">
+<style>
+  .page.wide { max-width: 920px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+  @media (max-width: 720px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+  .lang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+  .session-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; max-height: 260px; overflow-y: auto; }
+  .session-row {
+    display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
+    border-radius: 12px; background: #f5f5f7; cursor: pointer; font-size: 13px;
+  }
+  .session-row:hover { background: #eef2ff; }
+  .session-row.active { background: #eef2ff; border: 1px solid var(--blue); }
+  .log-entry { padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+  .log-entry:last-child { border-bottom: none; }
+  .log-entry .meta { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .log-entry .ts { color: var(--text-tertiary); font-size: 11px; }
+  .log-entry .transcript { color: var(--text-secondary); font-size: 13.5px; margin-bottom: 4px; }
+  .log-entry .reply { font-size: 13.5px; }
+  .section-gap { margin-top: 26px; }
+</style>
+</head>
+<body>
+<div class="page wide">
+  <div class="logo-lockup" id="logo"></div>
+  <div class="eyebrow" style="margin-top:26px;"><span class="bar"></span><span class="txt">Governance &amp; audit</span></div>
+  <h2 class="section-title">Audit &amp; metrics</h2>
+  <p class="lead">Every turn is logged. These numbers are what a claims-ops team would watch.</p>
+
+  <div class="metrics-grid" id="metricsGrid"></div>
+
+  <div class="card section-gap" id="langCard">
+    <div class="card-label-text">LANGUAGE-WISE CONTAINMENT</div>
+    <div class="lang-grid" id="langGrid"></div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="card-label-text">RECENT SESSIONS</div>
+    <div class="session-list" id="sessionList"><p class="caption">Loading…</p></div>
+  </div>
+
+  <div class="card section-gap hidden" id="logCard">
+    <div class="card-label-text" id="logTitle">SESSION LOG</div>
+    <div id="logEntries"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px;">
+    <a href="/static/index.html" class="body-text">Back to home</a>
+  </div>
+</div>
+
+<script src="/static/js/logo.js"></script>
+<script src="/static/js/api.js"></script>
+<script>
+  renderSarvamLogo(document.getElementById("logo"));
+
+  function statCard(label, value, grad) {
+    return `<div class="card${grad ? " card-grad" : ""}"><div class="num">${value}</div><div class="label">${label}</div></div>`;
+  }
+
+  async function loadMetrics() {
+    const m = await Api.getMetrics();
+    const grid = document.getElementById("metricsGrid");
+    const pct = (r) => (r === null || r === undefined) ? "—" : `${Math.round(r * 100)}%`;
+    grid.innerHTML =
+      statCard("Containment rate", pct(m.containment_rate), true) +
+      statCard("Total sessions", m.total_sessions) +
+      statCard("Escalated", m.escalated_sessions) +
+      statCard("Doc recognition rate", pct(m.document_completeness_at_first_submission.rate));
+
+    const langGrid = document.getElementById("langGrid");
+    const langs = Object.entries(m.language_wise_containment || {});
+    langGrid.innerHTML = langs.length
+      ? langs.map(([code, v]) =>
+          `<div class="card"><div class="num" style="font-size:20px;">${pct(v.containment_rate)}</div>
+           <div class="label">${languageLabel(code)} (${v.total})</div></div>`
+        ).join("")
+      : `<p class="caption">No sessions yet.</p>`;
+  }
+
+  async function loadSessions() {
+    const { sessions } = await Api.listSessions();
+    const list = document.getElementById("sessionList");
+    if (!sessions.length) {
+      list.innerHTML = `<p class="caption">No sessions yet. Make a call first.</p>`;
+      return;
+    }
+    list.innerHTML = "";
+    sessions.forEach((s) => {
+      const row = document.createElement("div");
+      row.className = "session-row";
+      row.dataset.id = s.session_id;
+      row.innerHTML = `
+        <span>${s.session_id.slice(0, 8)}… · ${s.turns} turn(s) · ${languageLabel(s.language)}</span>
+        <span class="pill ${s.escalated ? "warning" : "success"}">${s.escalated ? "Escalated" : "Contained"}</span>
+      `;
+      row.addEventListener("click", () => loadLog(s.session_id, row));
+      list.appendChild(row);
+    });
+  }
+
+  async function loadLog(sessionId, rowEl) {
+    document.querySelectorAll(".session-row").forEach((r) => r.classList.remove("active"));
+    if (rowEl) rowEl.classList.add("active");
+    const logCard = document.getElementById("logCard");
+    const logTitle = document.getElementById("logTitle");
+    const logEntries = document.getElementById("logEntries");
+    logCard.classList.remove("hidden");
+    logTitle.textContent = `SESSION LOG — ${sessionId.slice(0, 8)}…`;
+    logEntries.innerHTML = `<p class="caption">Loading…</p>`;
+
+    const { audit_log } = await Api.getAudit(sessionId);
+    if (!audit_log.length) {
+      logEntries.innerHTML = `<p class="caption">No turns recorded.</p>`;
+      return;
+    }
+    logEntries.innerHTML = audit_log.map((e) => {
+      const time = new Date(e.timestamp * 1000).toLocaleTimeString();
+      if (e.event === "document_upload") {
+        return `<div class="log-entry">
+          <div class="meta"><span class="pill">Document</span><span class="ts">${time}</span></div>
+          <div class="transcript">Uploaded: ${e.filename} → classified as <b>${(e.classified_as || "unknown").replace(/_/g, " ")}</b></div>
+          <div class="reply">${e.assistant_text_en}</div>
+        </div>`;
+      }
+      return `<div class="log-entry">
+        <div class="meta">
+          <span class="pill">${languageLabel(e.detected_language)}</span>
+          ${e.action ? `<span class="pill warning">${e.action}</span>` : ""}
+          <span class="ts">${time}</span>
+        </div>
+        <div class="transcript">"${e.transcript}"</div>
+        <div class="reply">${e.assistant_text_en}</div>
+      </div>`;
+    }).join("");
+  }
+
+  loadMetrics();
+  loadSessions();
+</script>
+</body>
+</html>
