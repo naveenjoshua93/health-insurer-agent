@@ -14,10 +14,16 @@ FALLBACK_TEXT = (
 
 ESCALATION_NOTICE = " I've logged this and I'm connecting you to a human agent who can help further."
 
+CONFIRM_PREFIX_EN = "Just to confirm, you said:"
+CONFIRM_SUFFIX_EN = "Is that right? Please say yes or no."
+PROCESSING_FILLER_TEXT = "Okay, let me check that for you. One moment."
+NO_PROBLEM_TEXT = "No problem. Please tell me again, in your own words, what you'd like help with."
+UNCLEAR_YESNO_TEXT = "Sorry, I just need a yes or no here - was that correct?"
+
 FAILED_ATTEMPT_LIMIT = 2
 
 SYSTEM_PROMPT = (
-    "You are a claims assistant for Sampoorna Health Insurance. Use the available tools to answer the "
+    "You are the Health Secure Assistant, a claims assistant for Sampoorna Health Insurance. Use the available tools to answer the "
     "caller's question using only retrieved facts - never invent coverage details, limits, or denial reasons. "
     "If the caller's request is incomplete or ambiguous - for example they haven't given a claim ID or policy "
     "number yet, or it's unclear what they're asking about - do not call a tool and do not guess. Instead, reply "
@@ -239,6 +245,39 @@ def classify_uploaded_document(claim_type, ocr_text):
         return args.get("document_id", "unknown")
     except (json.JSONDecodeError, TypeError):
         return "unknown"
+
+
+def classify_yesno(transcript):
+    """Classifies a short confirmation reply as yes/no/unclear, in whatever language it was spoken."""
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "classify_yes_no",
+            "description": "Classify whether the caller's reply means yes, no, or is unclear - in any language.",
+            "parameters": {
+                "type": "object",
+                "properties": {"answer": {"type": "string", "enum": ["yes", "no", "unclear"]}},
+                "required": ["answer"],
+            },
+        },
+    }]
+    messages = [
+        {"role": "system", "content": "You classify short spoken confirmations as yes, no, or unclear, in any language."},
+        {"role": "user", "content": f'Caller said: "{transcript}". Does this mean yes, no, or is it unclear?'},
+    ]
+    resp = llm.chat(
+        messages, tools=tools,
+        tool_choice={"type": "function", "function": {"name": "classify_yes_no"}},
+        max_tokens=100, reasoning_effort="low",
+    )
+    message = resp["choices"][0]["message"]
+    if not message.get("tool_calls"):
+        return "unclear"
+    try:
+        args = json.loads(message["tool_calls"][0]["function"]["arguments"])
+        return args.get("answer", "unclear")
+    except (json.JSONDecodeError, TypeError):
+        return "unclear"
 
 
 def run_turn(session, transcript, response_language):

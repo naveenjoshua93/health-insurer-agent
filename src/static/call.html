@@ -130,7 +130,7 @@
   function addBubble(who, text) {
     const div = document.createElement("div");
     div.className = `bubble ${who === "caller" ? "caller" : "assistant"}`;
-    div.innerHTML = `<span class="who">${who === "caller" ? "You" : "Sampoorna Assistant"}</span>${text}`;
+    div.innerHTML = `<span class="who">${who === "caller" ? "You" : "Health Secure Assistant"}</span>${text}`;
     transcriptCard.appendChild(div);
     transcriptCard.scrollTop = transcriptCard.scrollHeight;
     return div;
@@ -273,11 +273,32 @@
       liveBubble.remove();
       liveBubble = null;
     }
-    addBubble("caller", result.transcript);
+    if (result.transcript) addBubble("caller", result.transcript);
     addBubble("assistant", result.assistant_text);
     setState("speaking", "The assistant is replying…");
     setMicInert("Please wait — the assistant is speaking.");
     await playAudioBase64Async(result.assistant_audio);
+
+    if (result.action === "CONTINUE") {
+      setState("wait", "Looking into your question…");
+      micHint.innerHTML = `<span class="processing-row">Please wait, I'm looking into that<span class="dot-flash"><span></span><span></span><span></span></span></span>`;
+      let resolved;
+      try {
+        resolved = await Api.resolveTurn(sessionId);
+      } catch (err) {
+        if (err.isSessionMissing) {
+          await recoverFromMissingSession();
+          return;
+        }
+        setState("wait", "Something went wrong");
+        setMicInert("Please tap the mic to try again.");
+        micBtn.classList.remove("inert");
+        micBtn.onclick = () => startListening();
+        return;
+      }
+      await handleTurnResult(resolved);
+      return;
+    }
 
     if (result.action === "REQUEST_DOCUMENT") {
       showSmsToast();

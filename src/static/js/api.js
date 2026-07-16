@@ -49,6 +49,11 @@ const Api = {
     return parseOrThrow(res);
   },
 
+  async resolveTurn(sessionId) {
+    const res = await fetch(`/session/${sessionId}/resolve`, { method: "POST" });
+    return parseOrThrow(res);
+  },
+
   async uploadDocument(sessionId, file) {
     const form = new FormData();
     form.append("session_id", sessionId);
