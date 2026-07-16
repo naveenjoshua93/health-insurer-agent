@@ -35,6 +35,9 @@ function floatTo16BitPCM(float32Array) {
 // can pause to think without being cut off.
 const SILENCE_RMS_THRESHOLD = 0.015;
 const SILENCE_HOLD_MS = 3000;
+// Hard failsafe: continuous background noise can keep the amplitude above threshold
+// forever, so silence may never register. Force a stop after this long regardless.
+const MAX_LISTEN_MS = 20000;
 
 function rms(float32Array) {
   let sum = 0;
@@ -55,6 +58,7 @@ class LiveCaptioner {
     this.hasSpoken = false;
     this.silenceSinceMs = null;
     this.ended = false;
+    this.startedAtMs = null;
   }
 
   start(stream) {
@@ -75,6 +79,7 @@ class LiveCaptioner {
     this.source = this.audioCtx.createMediaStreamSource(stream);
     this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
     const inputRate = this.audioCtx.sampleRate;
+    this.startedAtMs = this.audioCtx.currentTime * 1000;
 
     this.processor.onaudioprocess = (e) => {
       const input = e.inputBuffer.getChannelData(0);
@@ -86,8 +91,15 @@ class LiveCaptioner {
       }
 
       if (this.ended) return;
-      const level = rms(input);
       const now = this.audioCtx.currentTime * 1000;
+
+      if (now - this.startedAtMs >= MAX_LISTEN_MS) {
+        this.ended = true;
+        this.onEndSpeech();
+        return;
+      }
+
+      const level = rms(input);
       if (level >= SILENCE_RMS_THRESHOLD) {
         if (!this.hasSpoken) {
           this.hasSpoken = true;

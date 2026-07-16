@@ -82,7 +82,12 @@ def get_metrics():
     return metrics.compute_metrics()
 
 
-def _reply(session, detected_language, response_language, transcript, reply_en, action, extra_audit=None):
+def _filler_audio_b64(response_language):
+    filler_text = translate_mod.translate(orchestrator.PROCESSING_FILLER_TEXT, "en-IN", response_language)
+    return base64.b64encode(bulbul.synthesize(filler_text, response_language)).decode("ascii")
+
+
+def _reply(session, detected_language, response_language, transcript, reply_en, action):
     reply_localized = translate_mod.translate(reply_en, "en-IN", response_language)
     audio_out = bulbul.synthesize(reply_localized, response_language)
     session.setdefault("audit_log", []).append({
@@ -93,7 +98,6 @@ def _reply(session, detected_language, response_language, transcript, reply_en, 
         "assistant_text": reply_localized,
         "assistant_text_en": reply_en,
         "action": action,
-        **(extra_audit or {}),
     })
     _save_session(session)
     return {
@@ -102,6 +106,10 @@ def _reply(session, detected_language, response_language, transcript, reply_en, 
         "assistant_text": reply_localized,
         "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
         "action": action,
+        # Cached client-side and played instantly the moment the *next* utterance ends,
+        # so the caller hears an immediate acknowledgement while the real lookup for that
+        # next turn is still in flight over the network - no dead air, no extra round trip.
+        "filler_audio": _filler_audio_b64(response_language),
     }
 
 
@@ -118,72 +126,15 @@ async def turn(session_id: str = Form(...), audio: UploadFile = None):
         transcript = ""
         detected_language = session.get("language") or "en-IN"
 
-    response_language = session.get("language_override") or detected_language or session.get("language") or "en-IN"
-
     if not transcript:
+        response_language = session.get("language_override") or session.get("language") or "en-IN"
         return _reply(session, response_language, response_language, "", orchestrator.RETRY_TEXT, None)
 
     session["language"] = detected_language
     response_language = session.get("language_override") or detected_language
 
-    # Every caller utterance is confirmed by voice before any lookup happens - there is
-    # no screen on a phone call, so this is the only way the caller can correct a
-    # mis-heard claim ID or intent before the assistant acts on it.
-    stage = session.get("confirm_stage")
-
-    if stage == "awaiting_confirmation":
-        answer = orchestrator.classify_yesno(transcript)
-        if answer == "yes":
-            session["confirm_stage"] = "awaiting_final"
-            return _reply(session, detected_language, response_language, transcript, orchestrator.PROCESSING_FILLER_TEXT, "CONTINUE")
-        if answer == "no":
-            session["confirm_stage"] = None
-            session["pending_transcript"] = None
-            return _reply(session, detected_language, response_language, transcript, orchestrator.NO_PROBLEM_TEXT, None)
-        return _reply(session, detected_language, response_language, transcript, orchestrator.UNCLEAR_YESNO_TEXT, None)
-
-    # Fresh utterance (or a stray one that arrived instead of the expected resolve-continuation) - read it back for confirmation.
-    session["confirm_stage"] = "awaiting_confirmation"
-    session["pending_transcript"] = transcript
-    prefix = translate_mod.translate(orchestrator.CONFIRM_PREFIX_EN, "en-IN", response_language)
-    suffix = translate_mod.translate(orchestrator.CONFIRM_SUFFIX_EN, "en-IN", response_language)
-    confirm_text = f"{prefix} {transcript}. {suffix}"
-    audio_out = bulbul.synthesize(confirm_text, response_language)
-    session.setdefault("audit_log", []).append({
-        "timestamp": time.time(),
-        "detected_language": detected_language,
-        "response_language": response_language,
-        "transcript": transcript,
-        "assistant_text": confirm_text,
-        "assistant_text_en": f"{orchestrator.CONFIRM_PREFIX_EN} {transcript}. {orchestrator.CONFIRM_SUFFIX_EN}",
-        "action": None,
-    })
-    _save_session(session)
-    return {
-        "detected_language": detected_language,
-        "transcript": transcript,
-        "assistant_text": confirm_text,
-        "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
-        "action": None,
-    }
-
-
-@app.post("/session/{session_id}/resolve")
-def resolve(session_id: str):
-    session = _load_session(session_id)
-    pending = session.get("pending_transcript")
-    if not pending:
-        raise HTTPException(status_code=400, detail="nothing pending to resolve")
-
-    response_language = session.get("language_override") or session.get("language") or "en-IN"
-    turn_result = orchestrator.run_turn(session, pending, response_language)
-    session["confirm_stage"] = None
-    session["pending_transcript"] = None
-
-    return _reply(
-        session, session.get("language") or response_language, response_language,
-        "", turn_result["assistant_text_en"], turn_result.get("action"),
-    )
+    turn_result = orchestrator.run_turn(session, transcript, response_language)
+    return _reply(session, detected_language, response_language, transcript, turn_result["assistant_text_en"], turn_result.get("action"))
 
 
 INTRO_TEXT_EN = (
@@ -202,6 +153,7 @@ def get_intro(session_id: str):
     return {
         "assistant_text": text,
         "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
+        "filler_audio": _filler_audio_b64(language),
     }
 
 
@@ -290,7 +242,7 @@ def set_language_override(session_id: str, language_code: str = Form(...)):
     session = _load_session(session_id)
     session["language_override"] = language_code
     _save_session(session)
-    return {"language_override": language_code}
+    return {"language_override": language_code, "filler_audio": _filler_audio_b64(language_code)}
 
 
 @app.get("/audit/{session_id}")

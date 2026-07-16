@@ -124,6 +124,7 @@
   let liveBubble = null;
   let liveText = "";
   let ended = false; // guards against double-firing (VAD event + manual tap)
+  let fillerAudioBase64 = null; // cached "let me check that" clip, played instantly on speech-end
 
   statusDot.classList.remove("connecting");
 
@@ -185,6 +186,7 @@
       }
       return;
     }
+    fillerAudioBase64 = intro.filler_audio || null;
     addBubble("assistant", intro.assistant_text);
     await playAudioBase64Async(intro.assistant_audio);
     await playBeep();
@@ -231,7 +233,6 @@
 
     async function onEndSpeech() {
       if (ended) return;
-      if (!liveText) return; // ignore false end-of-speech before any words were heard
       ended = true;
       setMicInert("Got it — processing what you said. No need to press anything.");
       setState("wait", "Got it — one moment…");
@@ -247,9 +248,17 @@
       setState("wait", "Looking into your question…");
       micHint.innerHTML = `<span class="processing-row">Please wait, I'm looking into that<span class="dot-flash"><span></span><span></span><span></span></span></span>`;
 
+      // Fire the network call and the cached "let me check that" filler in parallel -
+      // the caller hears an immediate acknowledgement instead of dead air while the
+      // real lookup is still in flight.
+      const turnPromise = Api.sendTurn(sessionId, blob);
+      if (fillerAudioBase64) {
+        await playAudioBase64Async(fillerAudioBase64);
+      }
+
       let result;
       try {
-        result = await Api.sendTurn(sessionId, blob);
+        result = await turnPromise;
       } catch (err) {
         if (err.isSessionMissing) {
           await recoverFromMissingSession();
@@ -273,32 +282,12 @@
       liveBubble.remove();
       liveBubble = null;
     }
+    if (result.filler_audio) fillerAudioBase64 = result.filler_audio;
     if (result.transcript) addBubble("caller", result.transcript);
     addBubble("assistant", result.assistant_text);
     setState("speaking", "The assistant is replying…");
     setMicInert("Please wait — the assistant is speaking.");
     await playAudioBase64Async(result.assistant_audio);
-
-    if (result.action === "CONTINUE") {
-      setState("wait", "Looking into your question…");
-      micHint.innerHTML = `<span class="processing-row">Please wait, I'm looking into that<span class="dot-flash"><span></span><span></span><span></span></span></span>`;
-      let resolved;
-      try {
-        resolved = await Api.resolveTurn(sessionId);
-      } catch (err) {
-        if (err.isSessionMissing) {
-          await recoverFromMissingSession();
-          return;
-        }
-        setState("wait", "Something went wrong");
-        setMicInert("Please tap the mic to try again.");
-        micBtn.classList.remove("inert");
-        micBtn.onclick = () => startListening();
-        return;
-      }
-      await handleTurnResult(resolved);
-      return;
-    }
 
     if (result.action === "REQUEST_DOCUMENT") {
       showSmsToast();
