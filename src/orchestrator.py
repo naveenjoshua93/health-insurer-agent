@@ -19,6 +19,10 @@ FAILED_ATTEMPT_LIMIT = 2
 SYSTEM_PROMPT = (
     "You are a claims assistant for Sampoorna Health Insurance. Use the available tools to answer the "
     "caller's question using only retrieved facts - never invent coverage details, limits, or denial reasons. "
+    "If the caller's request is incomplete or ambiguous - for example they haven't given a claim ID or policy "
+    "number yet, or it's unclear what they're asking about - do not call a tool and do not guess. Instead, reply "
+    "directly with a short, specific follow-up question that asks for exactly what is missing (e.g. 'Could you "
+    "share your claim ID or policy number?'). This is a normal, resolved part of the conversation, not a failure. "
     "Call create_grievance_case immediately, without trying other tools first, if the caller: explicitly asks "
     "for a human agent; sounds distressed or upset; raises anything out of scope or high-stakes (medical "
     "advice, legal threats, fraud allegations, IRDAI or ombudsman complaints); or gives identity details "
@@ -275,11 +279,18 @@ def run_turn(session, transcript, response_language):
 
         messages.append({"role": "assistant", "tool_calls": message["tool_calls"]})
         messages.append({"role": "tool", "tool_call_id": tool_call["id"], "content": json.dumps(result, default=str)})
+    elif message.get("content"):
+        # No tool call, but the model has something to say - almost always a legitimate
+        # clarifying follow-up question (e.g. "what's your claim ID?"). That's a normal,
+        # resolved conversational turn, not a failed attempt - asking it shouldn't burn
+        # through the escalation budget.
+        resolved = True
+        reply_en = message["content"]
 
     if resolved:
         session["failed_attempts"] = 0
     else:
-        # No tool call, or a tool call that found nothing - an unresolved attempt (§4.9),
+        # A tool was called but found nothing - a genuinely unresolved attempt (§4.9),
         # not an immediate-trigger escalation. Give one retry before escalating.
         session["failed_attempts"] = session.get("failed_attempts", 0) + 1
         if session["failed_attempts"] >= FAILED_ATTEMPT_LIMIT:

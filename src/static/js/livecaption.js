@@ -29,6 +29,19 @@ function floatTo16BitPCM(float32Array) {
   return out;
 }
 
+// Sarvam's own end-of-speech VAD event fires on ordinary thinking pauses, cutting
+// callers off mid-thought. We only use Sarvam for live transcription now; end-of-turn
+// is decided locally from raw mic amplitude, with a generous silence hold so people
+// can pause to think without being cut off.
+const SILENCE_RMS_THRESHOLD = 0.015;
+const SILENCE_HOLD_MS = 3000;
+
+function rms(float32Array) {
+  let sum = 0;
+  for (let i = 0; i < float32Array.length; i++) sum += float32Array[i] * float32Array[i];
+  return Math.sqrt(sum / float32Array.length);
+}
+
 class LiveCaptioner {
   constructor(onTranscript, onEndSpeech, onStartSpeech) {
     this.onTranscript = onTranscript;
@@ -39,6 +52,9 @@ class LiveCaptioner {
     this.processor = null;
     this.source = null;
     this.silentGain = null;
+    this.hasSpoken = false;
+    this.silenceSinceMs = null;
+    this.ended = false;
   }
 
   start(stream) {
@@ -49,10 +65,6 @@ class LiveCaptioner {
         const data = JSON.parse(evt.data);
         if (data.kind === "transcript") {
           this.onTranscript(data.transcript);
-        } else if (data.kind === "vad" && data.signal_type === "END_SPEECH") {
-          this.onEndSpeech();
-        } else if (data.kind === "vad" && data.signal_type === "START_SPEECH") {
-          this.onStartSpeech();
         }
       } catch (err) {
         // ignore malformed frames
@@ -65,11 +77,31 @@ class LiveCaptioner {
     const inputRate = this.audioCtx.sampleRate;
 
     this.processor.onaudioprocess = (e) => {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
       const input = e.inputBuffer.getChannelData(0);
-      const downsampled = downsampleBuffer(input, inputRate, 16000);
-      const pcm16 = floatTo16BitPCM(downsampled);
-      this.ws.send(pcm16.buffer);
+
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        const downsampled = downsampleBuffer(input, inputRate, 16000);
+        const pcm16 = floatTo16BitPCM(downsampled);
+        this.ws.send(pcm16.buffer);
+      }
+
+      if (this.ended) return;
+      const level = rms(input);
+      const now = this.audioCtx.currentTime * 1000;
+      if (level >= SILENCE_RMS_THRESHOLD) {
+        if (!this.hasSpoken) {
+          this.hasSpoken = true;
+          this.onStartSpeech();
+        }
+        this.silenceSinceMs = null;
+      } else if (this.hasSpoken) {
+        if (this.silenceSinceMs === null) {
+          this.silenceSinceMs = now;
+        } else if (now - this.silenceSinceMs >= SILENCE_HOLD_MS) {
+          this.ended = true;
+          this.onEndSpeech();
+        }
+      }
     };
 
     // Route through a zero-gain node so onaudioprocess fires without audible echo.
