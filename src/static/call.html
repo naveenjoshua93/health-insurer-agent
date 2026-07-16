@@ -193,6 +193,36 @@
     startListening();
   }
 
+  // Returning from the document-upload screen (upload.html) should continue the
+  // same call, not replay the full intro as if it were a brand new one - the OCR
+  // verdict was already spoken there, so we just surface it in the transcript and
+  // go straight back to listening.
+  async function resumeCall() {
+    gateCard.classList.add("hidden");
+    transcriptCard.classList.remove("hidden");
+    stateBanner.classList.remove("hidden");
+    micArea.classList.remove("hidden");
+    setState("wait", "Reconnecting to your call…");
+    setMicInert("Please wait…");
+
+    try {
+      const [status, audit] = await Promise.all([Api.getSessionStatus(sessionId), Api.getAudit(sessionId)]);
+      if (status.language_override || status.language) {
+        langChip.textContent = languageLabel(status.language_override || status.language);
+      }
+      const docEvent = (audit.audit_log || []).slice().reverse().find((e) => e.event === "document_upload");
+      if (docEvent) addBubble("assistant", docEvent.assistant_text);
+    } catch (err) {
+      if (err.isSessionMissing) {
+        await recoverFromMissingSession();
+        return;
+      }
+    }
+
+    await playBeep();
+    startListening();
+  }
+
   function onLiveTranscript(text) {
     liveText = (liveText + " " + text).trim();
     if (!liveBubble) {
@@ -306,7 +336,11 @@
     startListening();
   }
 
-  startCallBtn.addEventListener("click", startCall);
+  if (params.get("resume") === "1") {
+    resumeCall();
+  } else {
+    startCallBtn.addEventListener("click", startCall);
+  }
 </script>
 </body>
 </html>

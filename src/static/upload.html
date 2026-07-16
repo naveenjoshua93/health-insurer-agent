@@ -131,7 +131,7 @@
   }
 
   document.getElementById("returnBtn").addEventListener("click", () => {
-    window.location.href = `/static/call.html?session_id=${sessionId}`;
+    window.location.href = `/static/call.html?session_id=${sessionId}&resume=1`;
   });
   document.getElementById("retryBtn").addEventListener("click", () => showOnly(promptState));
 </script>
