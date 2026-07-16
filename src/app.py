@@ -152,11 +152,11 @@ async def ws_live_transcribe(websocket: WebSocket):
             await live_stt.send_flush(upstream)
 
     async def relay_sarvam_to_browser(upstream):
-        async for transcript, language_code in live_stt.iter_transcripts(upstream):
+        async for event in live_stt.iter_events(upstream):
             if not browser_open:
                 break
             try:
-                await websocket.send_json({"transcript": transcript, "language_code": language_code})
+                await websocket.send_json(event)
             except RuntimeError:
                 break
 

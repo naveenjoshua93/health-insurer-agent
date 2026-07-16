@@ -30,8 +30,10 @@ function floatTo16BitPCM(float32Array) {
 }
 
 class LiveCaptioner {
-  constructor(onTranscript) {
+  constructor(onTranscript, onEndSpeech, onStartSpeech) {
     this.onTranscript = onTranscript;
+    this.onEndSpeech = onEndSpeech || (() => {});
+    this.onStartSpeech = onStartSpeech || (() => {});
     this.ws = null;
     this.audioCtx = null;
     this.processor = null;
@@ -45,7 +47,13 @@ class LiveCaptioner {
     this.ws.onmessage = (evt) => {
       try {
         const data = JSON.parse(evt.data);
-        if (data.transcript) this.onTranscript(data.transcript);
+        if (data.kind === "transcript") {
+          this.onTranscript(data.transcript);
+        } else if (data.kind === "vad" && data.signal_type === "END_SPEECH") {
+          this.onEndSpeech();
+        } else if (data.kind === "vad" && data.signal_type === "START_SPEECH") {
+          this.onStartSpeech();
+        }
       } catch (err) {
         // ignore malformed frames
       }
