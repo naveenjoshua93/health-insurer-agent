@@ -96,11 +96,11 @@ def _build_policy_derived_faq():
         "a": f"Your sum insured is Rs {_policy_kb['sum_insured']:,} for the policy year.",
     })
     entries.append({
-        "q": "how many days of pre hospitalization expenses are covered",
+        "q": "how many days of pre hospitalization before admission expenses are covered",
         "a": f"Expenses from {_policy_kb['pre_hospitalization_days']} days before hospitalization are covered.",
     })
     entries.append({
-        "q": "how many days of post hospitalization expenses are covered",
+        "q": "how many days of post hospitalization after discharge expenses can I submit documents for are covered",
         "a": f"Expenses up to {_policy_kb['post_hospitalization_days']} days after discharge are covered.",
     })
     return entries
@@ -154,17 +154,22 @@ def _tokenize(text):
     return {_stem(w) for w in words if w not in _STOPWORDS}
 
 
+# Words too topically generic to trust as a lone match signal - "surgery" alone matched both
+# a pet-surgery question and the unrelated "cosmetic surgery" exclusion. A single-word overlap
+# only counts if that word is more specific than this (e.g. "cataract", "dental", "ambulance");
+# two or more overlapping words are trusted even if all of them are generic (e.g. "room" + "rent").
+_GENERIC_MATCH_TERMS = {"cover", "surgery", "treatment", "claim", "reimbursement"}
+
+
 def get_policy_clause(query):
     query_tokens = _tokenize(query)
-    best_score, best_answer = 0, None
+    best_score, best_overlap, best_answer = 0, set(), None
     for faq in _all_faq:
-        score = len(query_tokens & _tokenize(faq["q"]))
+        overlap = query_tokens & _tokenize(faq["q"])
+        score = len(overlap)
         if score > best_score:
-            best_score, best_answer = score, faq["a"]
-    # Require at least two overlapping content words - a single shared word (e.g. "surgery"
-    # matching both "pet surgery" and the unrelated "cosmetic surgery" exclusion) is too weak
-    # a signal and risks confidently returning the wrong record instead of admitting no match.
-    if best_score >= 2:
+            best_score, best_overlap, best_answer = score, overlap, faq["a"]
+    if best_score >= 2 or (best_score == 1 and best_overlap - _GENERIC_MATCH_TERMS):
         return {"found": True, "text": best_answer}
     return {"found": False, "text": None}
 
