@@ -194,15 +194,18 @@ def upload_confirmation_text(document_id, completeness):
     if not completeness.get("found"):
         return "I couldn't find that claim."
     if document_id == "unknown":
-        prefix = "I couldn't recognize that document from the scan."
+        prefix = (
+            "I couldn't recognize that document from the scan. Please try again with the full "
+            "document visible in good lighting, or try a different document."
+        )
     else:
         label = knowledge.document_label(completeness["claim_type"], document_id)
-        prefix = f"Your {label} has been received."
+        prefix = f"Your {label} has been received and is on file for your claim."
     missing = completeness.get("missing_labels", [])
     if not missing:
-        return f"{prefix} Your file is now complete."
+        return f"{prefix} That completes your file - your reimbursement can now move forward for review."
     verb = "is" if len(missing) == 1 else "are"
-    return f"{prefix} Your {' and '.join(missing)} {verb} still missing."
+    return f"{prefix} Your {' and '.join(missing)} {verb} still needed - please scan and upload next."
 
 
 def _english_text_for_tool_result(name, result):
@@ -233,7 +236,13 @@ def _english_text_for_tool_result(name, result):
             return None
         if not result.get("missing"):
             return f"Claim {result['claim_id']} already has all its required documents - there's nothing left to upload."
-        return f"I've sent you a message below with a secure link to upload the missing documents for claim {result['claim_id']}."
+        missing = result.get("missing_labels", [])
+        verb = "is" if len(missing) == 1 else "are"
+        return (
+            f"For claim {result['claim_id']}, your {' and '.join(missing)} {verb} still needed to process your "
+            f"reimbursement. I've sent you a secure link below - tap it, take a clear photo of each document, "
+            f"and I'll check it and let you know right away whether anything else is missing."
+        )
 
     if name == "create_grievance_case":
         return "I've logged this and I'm connecting you to a human agent who will follow up with you."
