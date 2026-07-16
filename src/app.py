@@ -1,15 +1,16 @@
+import asyncio
 import base64
 import json
 import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi import FastAPI, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from src import knowledge, metrics, orchestrator
-from src.sarvam import bulbul, saaras, translate as translate_mod, vision
+from src.sarvam import bulbul, saaras, translate as translate_mod, vision, live_stt
 
 app = FastAPI()
 
@@ -113,6 +114,59 @@ async def turn(session_id: str = Form(...), audio: UploadFile = None):
         "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
         "action": turn_result.get("action"),
     }
+
+
+INTRO_TEXT_EN = (
+    "Hello, I'm the Sampoorna Health Secure assistant. I can help with cashless approval, "
+    "reimbursement documents, or explaining a claim decision. Speak after the beep."
+)
+
+
+@app.post("/session/{session_id}/intro")
+def get_intro(session_id: str):
+    session = _load_session(session_id)
+    language = session.get("language_override") or session.get("language") or "en-IN"
+    text = translate_mod.translate(INTRO_TEXT_EN, "en-IN", language)
+    audio_out = bulbul.synthesize(text, language)
+    return {
+        "assistant_text": text,
+        "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
+    }
+
+
+@app.websocket("/ws/live-transcribe")
+async def ws_live_transcribe(websocket: WebSocket):
+    await websocket.accept()
+    browser_open = True
+
+    async def relay_browser_to_sarvam(upstream):
+        nonlocal browser_open
+        try:
+            while True:
+                chunk = await websocket.receive_bytes()
+                await live_stt.send_chunk(upstream, chunk)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            browser_open = False
+            await live_stt.send_flush(upstream)
+
+    async def relay_sarvam_to_browser(upstream):
+        async for transcript, language_code in live_stt.iter_transcripts(upstream):
+            if not browser_open:
+                break
+            try:
+                await websocket.send_json({"transcript": transcript, "language_code": language_code})
+            except RuntimeError:
+                break
+
+    try:
+        async with live_stt.connect() as upstream:
+            relay_task = asyncio.create_task(relay_sarvam_to_browser(upstream))
+            await relay_browser_to_sarvam(upstream)
+            relay_task.cancel()
+    except Exception as exc:
+        print(f"[live-transcribe] session ended with error: {exc}")
 
 
 @app.post("/document")

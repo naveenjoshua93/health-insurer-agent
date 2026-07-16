@@ -9,6 +9,11 @@ const Api = {
     return res.json();
   },
 
+  async getIntro(sessionId) {
+    const res = await fetch(`/session/${sessionId}/intro`, { method: "POST" });
+    return res.json();
+  },
+
   async setLanguageOverride(sessionId, languageCode) {
     const body = new URLSearchParams({ language_code: languageCode });
     const res = await fetch(`/session/${sessionId}/language`, { method: "POST", body });
@@ -59,6 +64,15 @@ function playAudioBase64(base64) {
   const audio = new Audio(`data:audio/wav;base64,${base64}`);
   audio.play();
   return audio;
+}
+
+function playAudioBase64Async(base64) {
+  return new Promise((resolve) => {
+    const audio = new Audio(`data:audio/wav;base64,${base64}`);
+    audio.onended = resolve;
+    audio.onerror = resolve;
+    audio.play().catch(resolve);
+  });
 }
 
 const LANGUAGE_NAMES = {

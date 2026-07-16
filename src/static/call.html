@@ -16,13 +16,17 @@
   .dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
   @keyframes pulse { 50% { opacity: 0.35; } }
 
-  .transcript-card { flex: 1; margin-top: 22px; display: flex; flex-direction: column; gap: 12px; min-height: 320px; max-height: 50vh; overflow-y: auto; }
+  .gate-card { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 24px; margin-top: 22px; }
+  .gate-card .icon { font-size: 40px; margin-bottom: 6px; }
+
+  .transcript-card { flex: 1; margin-top: 22px; display: flex; flex-direction: column; gap: 12px; min-height: 320px; max-height: 46vh; overflow-y: auto; }
   .bubble { max-width: 84%; padding: 12px 16px; border-radius: 16px; font: 400 14px/1.45 "DM Sans", sans-serif; }
   .bubble.caller { align-self: flex-end; background: #eef2ff; color: #1d1d1f; border-bottom-right-radius: 4px; }
   .bubble.assistant { align-self: flex-start; background: #f5f5f7; color: #1d1d1f; border-bottom-left-radius: 4px; }
+  .bubble.live { align-self: flex-end; background: #eef2ff; color: #4338ca; border-bottom-right-radius: 4px; opacity: 0.75; font-style: italic; }
   .bubble .who { font: 600 10.5px "DM Sans", sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px; display: block; }
 
-  .mic-area { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 0 8px; }
+  .mic-area { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 0 8px; }
   .mic-btn {
     width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer;
     background: var(--gradient-primary); color: #fff; font-size: 28px;
@@ -32,7 +36,14 @@
   .mic-btn.recording { background: var(--danger); animation: pulse-ring 1.2s infinite; }
   @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); } 100% { box-shadow: 0 0 0 16px rgba(220,38,38,0); } }
   .mic-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .mic-hint { font: 500 13px "DM Sans", sans-serif; color: var(--text-muted); }
+  .mic-hint { font: 500 13px "DM Sans", sans-serif; color: var(--text-muted); text-align: center; }
+
+  .processing-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .dot-flash { display: inline-flex; gap: 4px; }
+  .dot-flash span { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: flash 1s infinite; }
+  .dot-flash span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-flash span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes flash { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
 
   .sms-toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120%);
@@ -42,6 +53,7 @@
   }
   .sms-toast.show { transform: translateX(-50%) translateY(0); }
   .sms-toast a { color: #93c5fd; font-weight: 700; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -54,14 +66,17 @@
     </div>
   </div>
 
-  <div class="card transcript-card" id="transcript">
-    <div class="bubble assistant">
-      <span class="who">Sampoorna Assistant</span>
-      Hello, I'm the Sampoorna Health Secure assistant. Tap the microphone and speak — ask about cashless approval, reimbursement documents, or a claim decision.
-    </div>
+  <div class="card gate-card" id="gateCard">
+    <div class="tick"></div>
+    <div class="icon">&#128222;</div>
+    <h2 class="section-title" style="font-size:22px;">Ready when you are</h2>
+    <p class="lead">Tap to start the call. The assistant will introduce itself, then beep — that's your cue to speak.</p>
+    <button class="btn-primary" id="startCallBtn" style="margin-top:10px;">Start call</button>
   </div>
 
-  <div class="mic-area">
+  <div class="card transcript-card hidden" id="transcriptCard"></div>
+
+  <div class="mic-area hidden" id="micArea">
     <button class="mic-btn" id="micBtn">&#127908;</button>
     <div class="mic-hint" id="micHint">Tap to speak</div>
   </div>
@@ -75,6 +90,8 @@
 <script src="/static/js/logo.js"></script>
 <script src="/static/js/api.js"></script>
 <script src="/static/js/mic.js"></script>
+<script src="/static/js/livecaption.js"></script>
+<script src="/static/js/beep.js"></script>
 <script>
   renderSarvamLogo(document.getElementById("logo"));
 
@@ -84,15 +101,21 @@
 
   const statusDot = document.getElementById("statusDot");
   const langChip = document.getElementById("langChip");
-  const transcript = document.getElementById("transcript");
+  const gateCard = document.getElementById("gateCard");
+  const transcriptCard = document.getElementById("transcriptCard");
+  const micArea = document.getElementById("micArea");
+  const startCallBtn = document.getElementById("startCallBtn");
   const micBtn = document.getElementById("micBtn");
   const micHint = document.getElementById("micHint");
   const smsToast = document.getElementById("smsToast");
   const smsLink = document.getElementById("smsLink");
 
   let recorder = null;
+  let liveCaptioner = null;
   let recording = false;
   let busy = false;
+  let liveBubble = null;
+  let micStream = null;
 
   statusDot.classList.remove("connecting");
 
@@ -100,8 +123,9 @@
     const div = document.createElement("div");
     div.className = `bubble ${who === "caller" ? "caller" : "assistant"}`;
     div.innerHTML = `<span class="who">${who === "caller" ? "You" : "Sampoorna Assistant"}</span>${text}`;
-    transcript.appendChild(div);
-    transcript.scrollTop = transcript.scrollHeight;
+    transcriptCard.appendChild(div);
+    transcriptCard.scrollTop = transcriptCard.scrollHeight;
+    return div;
   }
 
   function showSmsToast() {
@@ -109,31 +133,73 @@
     smsLink.href = `/static/upload.html?session_id=${sessionId}`;
   }
 
+  async function startCall() {
+    gateCard.classList.add("hidden");
+    transcriptCard.classList.remove("hidden");
+    const intro = await Api.getIntro(sessionId);
+    addBubble("assistant", intro.assistant_text);
+    await playAudioBase64Async(intro.assistant_audio);
+    await playBeep();
+    micArea.classList.remove("hidden");
+    micHint.textContent = "Speak after the beep";
+  }
+
   async function handleTurnResult(result) {
     langChip.textContent = languageLabel(result.detected_language);
+    if (liveBubble) {
+      liveBubble.remove();
+      liveBubble = null;
+    }
     addBubble("caller", result.transcript);
     addBubble("assistant", result.assistant_text);
-    playAudioBase64(result.assistant_audio);
+    await playAudioBase64Async(result.assistant_audio);
 
     if (result.action === "REQUEST_DOCUMENT") {
       showSmsToast();
-    } else if (result.action === "ESCALATE") {
+      return;
+    }
+    if (result.action === "ESCALATE") {
       setTimeout(() => {
         window.location.href = `/static/escalation.html?session_id=${sessionId}`;
-      }, 1500);
+      }, 800);
+      return;
     }
+    await playBeep();
+    micHint.textContent = "Speak after the beep";
+  }
+
+  function onLiveTranscript(text) {
+    if (!liveBubble) {
+      liveBubble = document.createElement("div");
+      liveBubble.className = "bubble live";
+      liveBubble.innerHTML = `<span class="who">Listening…</span>`;
+      transcriptCard.appendChild(liveBubble);
+    }
+    liveBubble.innerHTML = `<span class="who">Listening…</span>${text}`;
+    transcriptCard.scrollTop = transcriptCard.scrollHeight;
   }
 
   async function toggleMic() {
     if (busy) return;
     if (!recording) {
       try {
-        recorder = new MicRecorder();
-        await recorder.start();
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (err) {
         micHint.textContent = "Microphone access is needed to talk. Please allow it and try again.";
         return;
       }
+      recorder = new MicRecorder();
+      recorder.stream = micStream;
+      recorder.chunks = [];
+      recorder.mediaRecorder = new MediaRecorder(micStream);
+      recorder.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recorder.chunks.push(e.data);
+      };
+      recorder.mediaRecorder.start();
+
+      liveCaptioner = new LiveCaptioner(onLiveTranscript);
+      liveCaptioner.start(micStream);
+
       recording = true;
       micBtn.classList.add("recording");
       micBtn.textContent = "⏹";
@@ -142,11 +208,23 @@
       recording = false;
       busy = true;
       micBtn.classList.remove("recording");
-      micBtn.textContent = "⏳";
       micBtn.disabled = true;
-      micHint.textContent = "Thinking…";
+      micBtn.textContent = "⏳";
+      micHint.innerHTML = `<span class="processing-row">Processing your request<span class="dot-flash"><span></span><span></span><span></span></span></span>`;
+
+      if (liveCaptioner) {
+        liveCaptioner.stop();
+        liveCaptioner = null;
+      }
+
       try {
-        const blob = await recorder.stop();
+        const blob = await new Promise((resolve) => {
+          recorder.mediaRecorder.onstop = () => {
+            resolve(new Blob(recorder.chunks, { type: "audio/webm" }));
+          };
+          recorder.mediaRecorder.stop();
+        });
+        micStream.getTracks().forEach((t) => t.stop());
         const result = await Api.sendTurn(sessionId, blob);
         await handleTurnResult(result);
       } catch (err) {
@@ -155,11 +233,12 @@
         busy = false;
         micBtn.disabled = false;
         micBtn.textContent = "\u{1F3A4}";
-        micHint.textContent = "Tap to speak";
+        if (micHint.textContent.trim() === "") micHint.textContent = "Speak after the beep";
       }
     }
   }
 
+  startCallBtn.addEventListener("click", startCall);
   micBtn.addEventListener("click", toggleMic);
 </script>
 </body>
