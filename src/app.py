@@ -87,8 +87,24 @@ async def turn(session_id: str = Form(...), audio: UploadFile = None):
     session = _load_session(session_id)
     audio_bytes = await audio.read()
 
-    stt_result = saaras.transcribe(audio_bytes)
-    transcript = stt_result["transcript"]
+    try:
+        stt_result = saaras.transcribe(audio_bytes)
+        transcript = stt_result["transcript"].strip()
+    except Exception:
+        transcript = ""
+
+    if not transcript:
+        response_language = session.get("language_override") or session.get("language") or "en-IN"
+        retry_text = translate_mod.translate(orchestrator.RETRY_TEXT, "en-IN", response_language)
+        audio_out = bulbul.synthesize(retry_text, response_language)
+        return {
+            "detected_language": response_language,
+            "transcript": "",
+            "assistant_text": retry_text,
+            "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
+            "action": None,
+        }
+
     detected_language = stt_result["language_code"]
     session["language"] = detected_language
 

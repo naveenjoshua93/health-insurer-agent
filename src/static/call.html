@@ -231,6 +231,7 @@
 
     async function onEndSpeech() {
       if (ended) return;
+      if (!liveText) return; // ignore false end-of-speech before any words were heard
       ended = true;
       setMicInert("Got it — processing what you said. No need to press anything.");
       setState("wait", "Got it — one moment…");

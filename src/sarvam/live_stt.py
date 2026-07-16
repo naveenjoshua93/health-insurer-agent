@@ -8,7 +8,7 @@ from src.config import SARVAM_API_KEY
 WS_URL = (
     "wss://api.sarvam.ai/speech-to-text/ws"
     "?language-code=unknown&model=saaras:v3&sample_rate=16000"
-    "&high_vad_sensitivity=true&vad_signals=true"
+    "&high_vad_sensitivity=false&vad_signals=true"
 )
 
 
