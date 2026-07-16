@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="/static/css/design.css">
 <style>
   .page.wide { max-width: 920px; }
-  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
   @media (max-width: 720px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
   .lang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
   .session-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; max-height: 260px; overflow-y: auto; }
@@ -75,7 +75,9 @@
       statCard("Containment rate", pct(m.containment_rate), true) +
       statCard("Total sessions", m.total_sessions) +
       statCard("Escalated", m.escalated_sessions) +
-      statCard("Doc recognition rate", pct(m.document_completeness_at_first_submission.rate));
+      statCard("Doc recognition rate", pct(m.document_completeness_at_first_submission.rate)) +
+      statCard("Escalation w/ case summary", pct(m.escalation_quality.rate)) +
+      statCard("CSAT proxy", pct(m.csat_proxy.rate));
 
     const langGrid = document.getElementById("langGrid");
     const langs = Object.entries(m.language_wise_containment || {});
@@ -140,6 +142,7 @@
         </div>
         <div class="transcript">"${e.transcript}"</div>
         <div class="reply">${e.assistant_text_en}</div>
+        ${e.source ? `<div class="ts">Sourced from ${e.source.tool.replace(/_/g, " ")}${e.source.claim_id ? " · " + e.source.claim_id : ""}</div>` : ""}
       </div>`;
     }).join("");
   }

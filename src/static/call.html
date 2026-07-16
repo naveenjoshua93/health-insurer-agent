@@ -25,6 +25,7 @@
   .bubble.assistant { align-self: flex-start; background: #f5f5f7; color: #1d1d1f; border-bottom-left-radius: 4px; }
   .bubble.live { align-self: flex-end; background: #eef2ff; color: #4338ca; border-bottom-right-radius: 4px; opacity: 0.8; font-style: italic; }
   .bubble .who { font: 600 10.5px "DM Sans", sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px; display: block; }
+  .bubble .source-tag { font: 500 11px "DM Sans", sans-serif; color: var(--text-muted); margin-top: 6px; display: block; }
 
   .state-banner {
     text-align: center; padding: 9px 14px; border-radius: 100px; font: 600 12.5px "DM Sans", sans-serif;
@@ -128,10 +129,27 @@
 
   statusDot.classList.remove("connecting");
 
-  function addBubble(who, text) {
+  const SOURCE_LABELS = {
+    get_claim_status: "claim record",
+    get_cashless_status: "claim record",
+    get_denial_reason: "claim record",
+    check_document_completeness: "claim record",
+    send_document_upload_link: "claim record",
+    get_policy_clause: "policy knowledge base",
+  };
+
+  function sourceCaption(source) {
+    if (!source) return "";
+    const label = SOURCE_LABELS[source.tool];
+    if (!label) return "";
+    const suffix = source.claim_id ? ` ${source.claim_id}` : "";
+    return `<span class="source-tag">Sourced from ${label}${suffix}</span>`;
+  }
+
+  function addBubble(who, text, source) {
     const div = document.createElement("div");
     div.className = `bubble ${who === "caller" ? "caller" : "assistant"}`;
-    div.innerHTML = `<span class="who">${who === "caller" ? "You" : "Health Secure Assistant"}</span>${text}`;
+    div.innerHTML = `<span class="who">${who === "caller" ? "You" : "Health Secure Assistant"}</span>${text}${sourceCaption(source)}`;
     transcriptCard.appendChild(div);
     transcriptCard.scrollTop = transcriptCard.scrollHeight;
     return div;
@@ -314,7 +332,7 @@
     }
     if (result.filler_audio) fillerAudioBase64 = result.filler_audio;
     if (result.transcript) addBubble("caller", result.transcript);
-    addBubble("assistant", result.assistant_text);
+    addBubble("assistant", result.assistant_text, result.source);
     setState("speaking", "The assistant is replying…");
     setMicInert("Please wait — the assistant is speaking.");
     await playAudioBase64Async(result.assistant_audio);

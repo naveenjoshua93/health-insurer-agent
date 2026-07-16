@@ -87,7 +87,7 @@ def _filler_audio_b64(response_language):
     return base64.b64encode(bulbul.synthesize(filler_text, response_language)).decode("ascii")
 
 
-def _reply(session, detected_language, response_language, transcript, reply_en, action):
+def _reply(session, detected_language, response_language, transcript, reply_en, action, source=None):
     reply_localized = translate_mod.translate(reply_en, "en-IN", response_language)
     audio_out = bulbul.synthesize(reply_localized, response_language)
     session.setdefault("audit_log", []).append({
@@ -98,6 +98,7 @@ def _reply(session, detected_language, response_language, transcript, reply_en, 
         "assistant_text": reply_localized,
         "assistant_text_en": reply_en,
         "action": action,
+        "source": source,
     })
     _save_session(session)
     return {
@@ -106,6 +107,7 @@ def _reply(session, detected_language, response_language, transcript, reply_en, 
         "assistant_text": reply_localized,
         "assistant_audio": base64.b64encode(audio_out).decode("ascii"),
         "action": action,
+        "source": source,
         # Cached client-side and played instantly the moment the *next* utterance ends,
         # so the caller hears an immediate acknowledgement while the real lookup for that
         # next turn is still in flight over the network - no dead air, no extra round trip.
@@ -134,7 +136,10 @@ async def turn(session_id: str = Form(...), audio: UploadFile = None):
     response_language = session.get("language_override") or detected_language
 
     turn_result = orchestrator.run_turn(session, transcript, response_language)
-    return _reply(session, detected_language, response_language, transcript, turn_result["assistant_text_en"], turn_result.get("action"))
+    return _reply(
+        session, detected_language, response_language, transcript,
+        turn_result["assistant_text_en"], turn_result.get("action"), turn_result.get("source"),
+    )
 
 
 INTRO_TEXT_EN = (

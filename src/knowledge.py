@@ -161,8 +161,10 @@ def get_policy_clause(query):
         score = len(query_tokens & _tokenize(faq["q"]))
         if score > best_score:
             best_score, best_answer = score, faq["a"]
-    # Stopwords are already filtered out, so a single overlapping content word is a real signal.
-    if best_score >= 1:
+    # Require at least two overlapping content words - a single shared word (e.g. "surgery"
+    # matching both "pet surgery" and the unrelated "cosmetic surgery" exclusion) is too weak
+    # a signal and risks confidently returning the wrong record instead of admitting no match.
+    if best_score >= 2:
         return {"found": True, "text": best_answer}
     return {"found": False, "text": None}
 

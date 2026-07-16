@@ -34,7 +34,11 @@ SYSTEM_PROMPT = (
     "asks for an upload link or URL, call send_document_upload_link with their claim ID - the system sends "
     "the link automatically as a message the caller can open. Never describe a website, app, login steps, or "
     "any manual upload process yourself; that is not how this system works. If you don't yet know their claim "
-    "ID, ask for it first with a normal clarifying question instead of calling this tool."
+    "ID, ask for it first with a normal clarifying question instead of calling this tool. If the caller's "
+    "message has nothing to do with their insurance policy, claims, cashless authorization, or documents - "
+    "for example small talk, jokes, general knowledge questions, or requests for services this system doesn't "
+    "provide - do not answer it and do not treat it as a clarifying opportunity. Call create_grievance_case "
+    "immediately with reason 'out_of_scope_request'."
 )
 
 TOOLS = [
@@ -280,6 +284,7 @@ def run_turn(session, transcript, response_language):
     resolved = False
     action = None
     reply_en = None
+    source = None
 
     if message.get("tool_calls"):
         tool_call = message["tool_calls"][0]
@@ -299,6 +304,11 @@ def run_turn(session, transcript, response_language):
             resolved = True
         elif reply_en is not None:
             resolved = True
+            # Surfaced to the caller so the transcript can show which retrieved record
+            # backed the answer - proof the reply was looked up, not invented.
+            source = {"tool": tool_name}
+            if result.get("claim_id"):
+                source["claim_id"] = result["claim_id"]
             if tool_name == "get_denial_reason" and result.get("found"):
                 _make_grievance(session, intent="denial_explanation")
                 reply_en += ESCALATION_NOTICE
@@ -332,4 +342,4 @@ def run_turn(session, transcript, response_language):
     reply_localized = translate_mod.translate(reply_en, source_language_code="en-IN", target_language_code=response_language)
     messages.append({"role": "assistant", "content": reply_en})
 
-    return {"assistant_text": reply_localized, "assistant_text_en": reply_en, "action": action}
+    return {"assistant_text": reply_localized, "assistant_text_en": reply_en, "action": action, "source": source}
