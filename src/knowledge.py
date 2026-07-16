@@ -10,7 +10,16 @@ def _load(name):
         return json.load(f)
 
 
+def _normalize_id(value):
+    """Strips spaces/hyphens and case so a spoken/transcribed ID like 'SMP HL 500123'
+    or 'smphl500123' still matches the stored 'SMP-HL-500123' - STT rarely reproduces
+    the exact punctuation a caller reads out."""
+    return re.sub(r"[^A-Za-z0-9]", "", value or "").upper()
+
+
 _claims = {c["claim_id"]: c for c in _load("claims.json")["claims"]}
+_claims_by_norm_id = {_normalize_id(cid): c for cid, c in _claims.items()}
+_claims_by_norm_policy = {_normalize_id(c["policy_no"]): c for c in _claims.values()}
 _policy_kb = _load("policy_kb.json")
 _denial_templates = _load("denial_templates.json")["templates"]
 _cashless_faq = _load("cashless_faq.json")["faqs"]
@@ -102,12 +111,14 @@ _all_faq = _cashless_faq + _policy_derived_faq
 
 
 def get_claim_status(claim_id=None, policy_no=None):
-    if claim_id and claim_id in _claims:
-        return _claims[claim_id]
+    if claim_id:
+        claim = _claims_by_norm_id.get(_normalize_id(claim_id))
+        if claim:
+            return claim
     if policy_no:
-        for claim in _claims.values():
-            if claim["policy_no"] == policy_no:
-                return claim
+        claim = _claims_by_norm_policy.get(_normalize_id(policy_no))
+        if claim:
+            return claim
     return None
 
 
