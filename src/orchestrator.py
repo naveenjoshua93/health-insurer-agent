@@ -21,6 +21,11 @@ FAILED_ATTEMPT_LIMIT = 2
 SYSTEM_PROMPT = (
     "You are the Health Secure Assistant, a claims assistant for Sampoorna Health Insurance. Use the available tools to answer the "
     "caller's question using only retrieved facts - never invent coverage details, limits, or denial reasons. "
+    "Every reply is spoken aloud by text-to-speech, so never use markdown formatting - no asterisks, bullet "
+    "points, headers, or numbered lists. Write plain spoken sentences only. If the caller asks about a specific "
+    "claim's status, pending documents, denial reason, or any other stored fact - even one you already "
+    "mentioned earlier in this conversation - always call the matching tool again rather than answering from "
+    "memory; only a tool result is a trustworthy source of that fact. "
     "If the caller's request is incomplete or ambiguous - for example they haven't given a claim ID or policy "
     "number yet, or it's unclear what they're asking about - do not call a tool and do not guess. Instead, reply "
     "directly with a short, specific follow-up question that asks for exactly what is missing (e.g. 'Could you "
@@ -316,8 +321,13 @@ def run_turn(session, transcript, response_language):
             elif tool_name == "send_document_upload_link" and result.get("missing"):
                 action = "REQUEST_DOCUMENT"
 
-        messages.append({"role": "assistant", "tool_calls": message["tool_calls"]})
-        messages.append({"role": "tool", "tool_call_id": tool_call["id"], "content": json.dumps(result, default=str)})
+        # Deliberately not persisting the raw tool_calls/tool-result messages into session
+        # history: the full tool result (e.g. get_claim_status's entire claim record) contains
+        # far more than the deterministic template exposes, and leaving it in context lets the
+        # model free-text specific facts on a later turn without calling a tool again - bypassing
+        # the retrieve-then-explain guardrail entirely (and producing markdown the caller's TTS
+        # then reads aloud literally, e.g. "asterisk asterisk"). The final assistant reply below
+        # is sufficient context for future turns.
     elif message.get("content"):
         # No tool call, but the model has something to say - almost always a legitimate
         # clarifying follow-up question (e.g. "what's your claim ID?"). That's a normal,
