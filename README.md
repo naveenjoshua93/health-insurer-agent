@@ -10,6 +10,7 @@ claimant data is fictional.
 
 **Live demo:** https://sarvam-claims-poc.onrender.com
 **Business case deck:** [`docs/business-case-writeup.pdf`](docs/business-case-writeup.pdf)
+**Walkthrough video:** [`docs/demo-video.mp4`](docs/demo-video.mp4)
 
 ---
 
