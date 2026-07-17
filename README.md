@@ -9,7 +9,7 @@ document completeness, and denial/short-payment explanation.
 claimant data is fictional.
 
 **Live demo:** https://sarvam-claims-poc.onrender.com
-**Business case deck:** [`docs/Sarvam_Claims_Deck.pdf`](docs/Sarvam_Claims_Deck.pdf)
+**Business case deck:** [`docs/business-case-writeup.pdf`](docs/business-case-writeup.pdf)
 
 ---
 
@@ -122,7 +122,7 @@ a one-time check.
 No real telephony (toll-free is a named phase-2), no live claims-system integration (runs on seeded mock data),
 no RAG/vector store (one insurer's knowledge base fits in context; RAG is the named upgrade once it spans many
 products and insurers), no LangGraph/Pipecat orchestration frameworks (three intents is a simple router, not a
-graph). See `docs/Sarvam_Claims_Deck.pdf` (slide 13) for the full "where the PoC stops, how it gets to
+graph). See `docs/business-case-writeup.pdf` (slide 13) for the full "where the PoC stops, how it gets to
 production" table, and `docs/business-writeup.md` for supporting rationale.
 
 ---
@@ -147,7 +147,7 @@ production" table, and `docs/business-writeup.md` for supporting rationale.
   generate_sample_documents.py       # synthesizes sample claim documents for the OCR demo
 /sessions                    # JSON-file session storage (gitignored)
 /docs
-  Sarvam_Claims_Deck.pdf       # the business case deck (customer-ready, 19 slides)
+  business-case-writeup.pdf       # the business case deck (customer-ready, 19 slides)
   business-writeup.md           # supporting written rationale
   technical-architecture.md      # deep technical reference
   architecture-diagram.svg        # system diagram
@@ -213,7 +213,7 @@ honest number, not an inflated one. The real value is elsewhere, and it's larger
 - **Fewer grievances, better retention** — clear answers in the caller's own language reduce disputes.
 
 Full figures, assumptions, and the phased GTM path (paid pilot → prove metrics → production rollout → scale to
-the full servicing layer) are in `docs/Sarvam_Claims_Deck.pdf`.
+the full servicing layer) are in `docs/business-case-writeup.pdf`.
 
 ## Production upgrade path (named, not built)
 
